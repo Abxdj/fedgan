@@ -1,0 +1,8 @@
+{
+  "GAN \u2014 IID Baseline": 113.61,
+  "GAN \u2014 Non-IID": 120.3,
+  "GAN \u2014 Noisy Client": 144.84,
+  "cGAN \u2014 IID Baseline": 165.8,
+  "cGAN \u2014 Non-IID": 170.28,
+  "cGAN \u2014 Noisy Client": 175.72
+}

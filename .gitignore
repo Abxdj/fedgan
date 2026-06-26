@@ -1,0 +1,8 @@
+data/
+checkpoints/
+venv/
+__pycache__/
+plots/
+samples/
+*.npz
+*.pt

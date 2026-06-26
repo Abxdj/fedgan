@@ -1,0 +1,58 @@
+{
+  "Real Data (Reference)": {
+    "overall_accuracy": 74.99,
+    "per_class_accuracy": [
+      32.96,
+      100.0,
+      79.94,
+      81.39,
+      91.11,
+      75.34,
+      83.67,
+      37.29,
+      92.7
+    ]
+  },
+  "IID Baseline": {
+    "overall_accuracy": 4.33,
+    "per_class_accuracy": [
+      0.0,
+      0.0,
+      43.07,
+      0.0,
+      12.27,
+      6.25,
+      0.0,
+      0.24,
+      0.0
+    ]
+  },
+  "Non-IID": {
+    "overall_accuracy": 7.3,
+    "per_class_accuracy": [
+      0.0,
+      0.0,
+      0.0,
+      44.01,
+      15.75,
+      0.0,
+      0.0,
+      19.48,
+      0.0
+    ]
+  },
+  "Noisy Client": {
+    "overall_accuracy": 9.76,
+    "per_class_accuracy": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      35.07,
+      29.22,
+      0.0,
+      29.22,
+      3.41
+    ]
+  }
+}
