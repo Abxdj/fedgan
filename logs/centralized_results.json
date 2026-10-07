@@ -1,0 +1,34 @@
+{
+  "Centralized GAN": {
+    "fid_mean": 84.13,
+    "fid_std": 1.97,
+    "fid_seeds": [
+      85.73,
+      81.36,
+      85.32
+    ],
+    "acc_mean": 4.59,
+    "acc_std": 2.92,
+    "acc_seeds": [
+      6.09,
+      0.52,
+      7.17
+    ]
+  },
+  "Centralized cGAN": {
+    "fid_mean": 104.07,
+    "fid_std": 2.81,
+    "fid_seeds": [
+      107.87,
+      101.18,
+      103.15
+    ],
+    "acc_mean": 53.57,
+    "acc_std": 2.34,
+    "acc_seeds": [
+      53.89,
+      56.27,
+      50.56
+    ]
+  }
+}

@@ -6,3 +6,6 @@ plots/
 samples/
 *.npz
 *.pt
+CLAUDE.md
+REVIEW_REPORT.md
+notes/

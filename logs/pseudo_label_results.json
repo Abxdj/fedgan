@@ -1,0 +1,50 @@
+{
+  "pseudo_labeler_accuracy_mean": 80.87,
+  "chance_level": 11.11,
+  "results": {
+    "GAN \u2014 IID Baseline": {
+      "acc_mean": 33.67,
+      "acc_std": 4.21,
+      "acc_seeds": [
+        34.51,
+        28.15,
+        38.36
+      ],
+      "label_entropy_mean": 0.532,
+      "mean_confidence": 0.785
+    },
+    "GAN \u2014 Non-IID": {
+      "acc_mean": 31.05,
+      "acc_std": 6.3,
+      "acc_seeds": [
+        30.35,
+        39.09,
+        23.72
+      ],
+      "label_entropy_mean": 0.44,
+      "mean_confidence": 0.832
+    },
+    "GAN \u2014 Noisy Client": {
+      "acc_mean": 22.57,
+      "acc_std": 17.3,
+      "acc_seeds": [
+        6.31,
+        46.53,
+        14.86
+      ],
+      "label_entropy_mean": 0.377,
+      "mean_confidence": 0.824
+    },
+    "Centralized GAN": {
+      "acc_mean": 48.68,
+      "acc_std": 6.76,
+      "acc_seeds": [
+        45.97,
+        57.97,
+        42.09
+      ],
+      "label_entropy_mean": 0.677,
+      "mean_confidence": 0.826
+    }
+  }
+}

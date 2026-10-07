@@ -1,0 +1,60 @@
+{
+  "Real Data (Reference)": {
+    "mean": 85.89,
+    "std": 0.0
+  },
+  "GAN \u2014 IID Baseline": {
+    "mean": 10.55,
+    "std": 5.94,
+    "seeds": [
+      18.64,
+      4.54,
+      8.47
+    ]
+  },
+  "GAN \u2014 Non-IID": {
+    "mean": 7.35,
+    "std": 2.97,
+    "seeds": [
+      11.49,
+      4.69,
+      5.86
+    ]
+  },
+  "GAN \u2014 Noisy Client": {
+    "mean": 13.72,
+    "std": 3.49,
+    "seeds": [
+      11.57,
+      10.95,
+      18.64
+    ]
+  },
+  "cGAN \u2014 IID Baseline": {
+    "mean": 42.53,
+    "std": 7.45,
+    "seeds": [
+      47.14,
+      32.02,
+      48.43
+    ]
+  },
+  "cGAN \u2014 Non-IID": {
+    "mean": 44.16,
+    "std": 7.74,
+    "seeds": [
+      33.89,
+      46.03,
+      52.58
+    ]
+  },
+  "cGAN \u2014 Noisy Client": {
+    "mean": 41.33,
+    "std": 4.97,
+    "seeds": [
+      45.24,
+      44.43,
+      34.32
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "GAN \u2014 IID Baseline": {
+    "precision": 0.9156,
+    "recall": 0.0048
+  },
+  "GAN \u2014 Non-IID": {
+    "precision": 0.8684,
+    "recall": 0.0044
+  },
+  "GAN \u2014 Noisy Client": {
+    "precision": 0.9614,
+    "recall": 0.0036
+  },
+  "cGAN \u2014 IID Baseline": {
+    "precision": 0.7734,
+    "recall": 0.0002
+  },
+  "cGAN \u2014 Non-IID": {
+    "precision": 0.7998,
+    "recall": 0.0
+  },
+  "cGAN \u2014 Noisy Client": {
+    "precision": 0.7576,
+    "recall": 0.0
+  }
+}
