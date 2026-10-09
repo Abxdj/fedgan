@@ -1,0 +1,31 @@
+CAPTION DRAFTS — rewrite in your own words; numbers are from final_results_v2.json
+Error bars / bands: ± 1 sample s.d. (ddof=1) or min–max over 3 generator seeds, as stated.
+
+Fig. 1  Generator loss per federated round (mean over clients; line = mean of 3 seeds,
+band = min–max). Under label skew the conditional GAN's loss rises and stalls in every
+run — frozen split, three per-seed splits, and Sync D&G — while every IID control falls;
+the unconditional GAN converges under the same skew. Loss values are not comparable
+across panels (different discriminator regimes).
+
+Fig. 2  FID against downstream accuracy for each configuration (mean ± 1 s.d., 3 seeds).
+Conditional: Spearman ρ = -0.19; unconditional (pseudo-labelled): ρ = +0.09. A metric that ranked utility would give ρ = −1.
+Unfilled markers: discriminator also synchronized (Sync D&G).
+
+Fig. 3  Per-configuration FID and downstream accuracy. Bars: mean of 3 generator seeds;
+dots: individual seeds; whiskers: ± 1 s.d. Downstream accuracy: classifier trained on
+10,000 synthetic images, best epoch selected on the PathMNIST validation split, averaged
+over 3 classifier seeds, tested on the 7,180 real test images. Vertical lines: classifiers
+trained on real data, full (84.5%) and 10,000-image (79.9%) subsets.
+
+Fig. 4  Per-class test accuracy of classifiers trained on conditional-GAN synthetic data
+(mean over 3 generator seeds × 3 classifier seeds). Top row: classifier trained on real data.
+
+Fig. 5  Mechanism diagnostic, conditional GAN, Sync-G, frozen split, 3 seeds (line = mean,
+band = min–max). (b) Mean discriminator logit on generated images; under non-IID the gap
+between locally-held and locally-absent classes widens from +2.17 (rounds 1–5) to +3.50 (rounds 26–30).
+(c) Cosine similarity of client generator updates; dashed = least-aligned client pair
+(seed-averaged). Seed-averaged minimum: IID +0.046, non-IID -0.101; single-seed minima +0.038 and -0.109.
+
+Fig. 6  Unconditional generators: downstream accuracy under round-robin labels (random
+with respect to image content by construction, hence near chance) versus pseudo-labels
+from a classifier trained on real data. Centralized 15k: round-robin 13.8 ± 4.8%, pseudo-labelled 37.6 ± 1.8%.
