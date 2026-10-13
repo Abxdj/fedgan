@@ -1,31 +1,39 @@
-CAPTION DRAFTS — rewrite in your own words; numbers are from final_results_v2.json
+CAPTION DRAFTS — rewrite in your own words; numbers are from final_results_v2.json and null_baseline.json
 Error bars / bands: ± 1 sample s.d. (ddof=1) or min–max over 3 generator seeds, as stated.
 
 Fig. 1  Generator loss per federated round (mean over clients; line = mean of 3 seeds,
-band = min–max). Under label skew the conditional GAN's loss rises and stalls in every
-run — frozen split, three per-seed splits, and Sync D&G — while every IID control falls;
-the unconditional GAN converges under the same skew. Loss values are not comparable
-across panels (different discriminator regimes).
+band = min–max). Change from round 5 to the mean of rounds 26–30, per seed — conditional
+GAN under label skew: Sync-G frozen split +0.45 to +0.57, three per-seed splits +0.69 to +1.07;
+Sync D&G +0.18 to +0.30 (smaller, after a sharp fall in rounds 1–4). Every IID control falls
+(Sync-G -1.83 to -1.52, Sync D&G -0.84 to -0.60); the unconditional GAN falls under every
+condition. Loss values are not comparable across panels (different discriminator regimes).
 
 Fig. 2  FID against downstream accuracy for each configuration (mean ± 1 s.d., 3 seeds).
-Conditional: Spearman ρ = -0.19; unconditional (pseudo-labelled): ρ = +0.09. A metric that ranked utility would give ρ = −1.
+Shaded: 0 to the 95th percentile (22.5%) of the average of 3 classifiers trained on content-free (permuted) labels through the same validation-selected pipeline (pooled over 210 runs). Dotted: majority-class rate of the test set (18.6%).
 Unfilled markers: discriminator also synchronized (Sync D&G).
+Spearman ρ, descriptive: (a) -0.19, n = 8, exact permutation p = 0.66; (b) +0.09, n = 6, exact permutation p = 0.92. Neither is distinguishable from zero at this n;
+the evidence is in specific pairs, e.g. Sync D&G vs Sync-G (IID): FID +1.2, accuracy -21.6 points.
 
 Fig. 3  Per-configuration FID and downstream accuracy. Bars: mean of 3 generator seeds;
-dots: individual seeds; whiskers: ± 1 s.d. Downstream accuracy: classifier trained on
-10,000 synthetic images, best epoch selected on the PathMNIST validation split, averaged
-over 3 classifier seeds, tested on the 7,180 real test images. Vertical lines: classifiers
-trained on real data, full (84.5%) and 10,000-image (79.9%) subsets.
+dots: individual seeds (each the mean of 3 classifiers); whiskers: ± 1 s.d. Downstream
+accuracy: classifier trained on 10,000 synthetic images, best epoch selected on the
+PathMNIST validation split, averaged over 3 classifier seeds, tested on the 7,180 real
+test images. Solid / dashed lines: real data, full (84.5%) and 10,000-image (79.9%) training sets.
+Dotted: majority class (18.6%). Shaded: 0 to the 95th percentile (22.5%) of the average of 3 classifiers trained on content-free (permuted) labels through the same validation-selected pipeline (pooled over 210 runs). 
 
 Fig. 4  Per-class test accuracy of classifiers trained on conditional-GAN synthetic data
 (mean over 3 generator seeds × 3 classifier seeds). Top row: classifier trained on real data.
 
 Fig. 5  Mechanism diagnostic, conditional GAN, Sync-G, frozen split, 3 seeds (line = mean,
-band = min–max). (b) Mean discriminator logit on generated images; under non-IID the gap
+band = min–max). (a) Mean discriminator logit on generated images; under non-IID the gap
 between locally-held and locally-absent classes widens from +2.17 (rounds 1–5) to +3.50 (rounds 26–30).
-(c) Cosine similarity of client generator updates; dashed = least-aligned client pair
-(seed-averaged). Seed-averaged minimum: IID +0.046, non-IID -0.101; single-seed minima +0.038 and -0.109.
+(b) Cosine similarity of client generator updates; dashed = least-aligned client pair
+(seed-averaged). Mean over pairs, round 1 → 30: IID +0.152 → +0.095, non-IID +0.094 → +0.006. Seed-averaged minimum: IID +0.046, non-IID -0.101; single-seed minima +0.038 and -0.109.
 
-Fig. 6  Unconditional generators: downstream accuracy under round-robin labels (random
-with respect to image content by construction, hence near chance) versus pseudo-labels
-from a classifier trained on real data. Centralized 15k: round-robin 13.8 ± 4.8%, pseudo-labelled 37.6 ± 1.8%.
+Fig. 6  Unconditional generators: downstream accuracy under round-robin labels versus
+pseudo-labels from a classifier trained on real data. Round-robin labels carry no
+information about image content, so these bars are draws from the meaningless-label
+baseline (shaded): single classifiers average 15.3 ± 7.1% (max 40.1%) with validation selection, 11.0% at the final epoch.
+Selection on labelled real validation data, not image content, lifts them above uniform
+chance (11.1%). Centralized 15k: pseudo-labelled 37.6 ± 1.8%. Centralized 3k: 7.8 ± 2.2%, below the baseline mean
+(its pseudo-labels collapse onto few classes).
