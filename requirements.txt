@@ -1,0 +1,14 @@
+# Exact versions used for every result in logs/ (Python 3.13.5, CUDA 12.4, Windows 11,
+# NVIDIA RTX 3060 Laptop GPU).
+#
+# PyTorch is installed from its own index for the CUDA 12.4 build:
+#   pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu124
+# then:
+#   pip install -r requirements.txt
+torch==2.6.0
+torchvision==0.21.0
+numpy==2.4.6
+scipy==1.17.1
+matplotlib==3.10.9
+medmnist==3.0.2
+pytorch-fid==0.3.0
