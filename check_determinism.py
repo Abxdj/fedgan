@@ -24,17 +24,41 @@ the same seed. If two identical calls disagree, it is (a).
   Test 3  original vs trace, permuted labels, repeated
 
 Run:
-    python check_determinism.py                 # tests 1-3, default mode
+    python check_determinism.py --log logs/determinism_check.txt
+                                                # tests 1-3, default mode; output also
+                                                # written to the log as UTF-8
+    python check_determinism.py                 # console only
     python check_determinism.py --strict        # same, with
         torch.use_deterministic_algorithms(True); may raise on ops without a
         deterministic CUDA kernel — the error message is itself the answer.
-Writes nothing. Runtime: a few minutes.
+Writes nothing unless --log is given. Runtime: a few minutes.
+Do not use shell redirection (>) on Windows: PowerShell/cp1252 can mangle or break it.
 """
 
 import os
 import sys
 
 STRICT = "--strict" in sys.argv
+LOG = None
+if "--log" in sys.argv:
+    i = sys.argv.index("--log")
+    LOG = sys.argv[i + 1]
+    del sys.argv[i:i + 2]
+
+
+class _Tee:
+    """Mirror stdout into a UTF-8 log file."""
+    def __init__(self, path):
+        self.f = open(path, "w", encoding="utf-8")
+        self.out = sys.stdout
+    def write(self, x):
+        self.out.write(x); self.f.write(x); self.f.flush()
+    def flush(self):
+        self.out.flush(); self.f.flush()
+
+
+if LOG:
+    sys.stdout = _Tee(LOG)
 if STRICT:
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")   # before CUDA init
 
@@ -77,7 +101,7 @@ def main():
     def report(name, a, b):
         same = abs(a[0] - b[0]) < 1e-9 and a[1] == b[1]
         print(f"  {name:<40} {a[0]:7.3f}% @ ep {a[1]:<2} | {b[0]:7.3f}% @ ep {b[1]:<2} -> "
-              f"{'IDENTICAL' if same else f'DIFFERENT (Δ {b[0] - a[0]:+.3f})'}")
+              f"{'IDENTICAL' if same else f'DIFFERENT (diff {b[0] - a[0]:+.3f})'}")
         return same
 
     try:
