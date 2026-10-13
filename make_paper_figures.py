@@ -10,6 +10,9 @@ Sources
                                          + downstream (val-selected, K=3)
   logs/losses_{tag}_seed{S}.json         per-round generator loss
   logs/diagnostic_{iid,non_iid}_seed{S}.json   mechanism diagnostic (Sync-G)
+  logs/null_baseline.json                meaningless-label baseline of the downstream
+                                         instrument + Welch / Spearman statistics
+                                         (optional: without it, bands are omitted)
 
 Outputs  figures/paper/   (PDF for LaTeX + 300-dpi PNG; legacy figures untouched)
   fig1_training_dynamics   G-loss per round, mean + min-max band over 3 seeds
@@ -17,8 +20,18 @@ Outputs  figures/paper/   (PDF for LaTeX + 300-dpi PNG; legacy figures untouched
   fig3_results_overview    FID | downstream accuracy, per configuration, with
                            the three per-seed values shown as dots
   fig4_perclass_heatmap    per-class test accuracy, conditional configurations
-  fig5_mechanism           D-logit hardening + client-update alignment, IID vs non-IID
-  fig6_labeling_artifact   unconditional: round-robin vs pseudo-labeled accuracy
+  fig5_mechanism           D-logit gap + client-update alignment, IID vs non-IID
+  fig6_labeling_artifact   unconditional: round-robin vs pseudo-labeled accuracy,
+                           against the meaningless-label baseline
+
+Reference marks on every accuracy axis:
+  dotted line   majority-class rate of the test set (18.6 %, Adipose) — the
+                accuracy of a constant classifier; uniform 11.1 % is not the
+                relevant floor because the test set is imbalanced
+  grey band     0 to the 95th percentile of an average of K classifiers trained
+                on content-free (permuted) labels through the identical
+                val-selected pipeline (K = 3, matching each per-seed value).
+                Pooled over all 210 null runs; resampled with a fixed seed.
   captions_draft.txt       caption drafts with the numbers filled in
 
 One encoding for the whole paper (so a colour means the same thing everywhere):
@@ -47,6 +60,10 @@ LOG_DIR = "./logs"
 OUT_DIR = os.path.join("figures", "paper")
 SEEDS   = [42, 123, 2024]
 CHANCE  = 100 / 9
+# PathMNIST test-set class counts (fallback when null_baseline.json is absent)
+TEST_COUNTS = [1338, 847, 339, 634, 1035, 592, 741, 421, 1233]
+MAJORITY = 100 * max(TEST_COUNTS) / sum(TEST_COUNTS)
+NULL_FILL = "#eeede8"   # meaningless-label band
 CLASS_NAMES = ["Adipose", "Background", "Debris", "Lymphocytes", "Mucus",
                "Smooth muscle", "Normal mucosa", "Stroma", "Adenocarcinoma"]
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -124,6 +141,39 @@ def load_json(path):
         return json.load(f)
 
 
+def load_null(K=3):
+    """Meaningless-label baseline: p95 of an average of K null classifiers."""
+    p = os.path.join(LOG_DIR, "null_baseline.json")
+    if not os.path.exists(p):
+        print("  null_baseline.json not found — bands omitted")
+        return None
+    nb = load_json(p)
+    pool = np.array([r["selected_acc"] for c in nb["configs"].values() for r in c["runs"]], float)
+    fin = np.array([r["final_acc"] for c in nb["configs"].values() for r in c["runs"]
+                    if r.get("final_acc") is not None], float)
+    k = np.random.default_rng(0).choice(pool, (200000, K)).mean(1)
+    return {"K": K, "n": int(pool.size), "single_mean": float(pool.mean()),
+            "single_sd": float(pool.std(ddof=1)), "single_max": float(pool.max()),
+            "final_mean": float(fin.mean()) if fin.size else None,
+            "k_p95": float(np.percentile(k, 95)), "k_p99": float(np.percentile(k, 99)),
+            "share_above_majority": float((pool >= MAJORITY).mean()),
+            "majority": float(nb.get("baselines", {}).get("test_majority_share", MAJORITY)),
+            "spearman": nb.get("spearman", {}), "welch": nb.get("welch", []),
+            "standin": bool(nb.get("standin"))}
+
+
+def null_marks(ax, NULL, axis="y", label=True):
+    """Grey band (meaningless-label p95) + dotted majority-class line."""
+    maj = NULL["majority"] if NULL else MAJORITY
+    span, line = (ax.axhspan, ax.axhline) if axis == "y" else (ax.axvspan, ax.axvline)
+    if NULL:
+        span(0, NULL["k_p95"], color=NULL_FILL, lw=0, zorder=0)
+    line(maj, color=MUTED, lw=0.7, ls=":", zorder=1)
+    if label and axis == "y":
+        ax.text(0.01, maj, " majority class", transform=ax.get_yaxis_transform(),
+                fontsize=6.0, color=MUTED, va="bottom")
+
+
 def marker_style(color, variant, size=6.5):
     """Filled circle by default; triangle = per-seed split; square = centralized;
     hollow (unfilled) = Sync D&G. Filled marks carry a thin surface ring."""
@@ -195,22 +245,23 @@ def fig1_training_dynamics():
 LABEL_OFFSETS = {  # (dx, dy) in points, tuned for the frozen numbers
     "central_cgan": (7, 6), "central_cgan_3k": (-9, -8),
     "cgan_iid": (8, 5), "cgan_non_iid": (9, 8), "cgan_non_iid_perseed_syncG": (9, -6),
-    "cgan_noisy_client": (14, -14), "cgan_iid_syncDG": (9, -9), "cgan_non_iid_syncDG": (-16, 14),
-    "central_gan": (8, 5), "central_gan_3k": (8, 5), "iid": (9, -10), "non_iid": (9, 6),
+    "cgan_noisy_client": (14, -14), "cgan_iid_syncDG": (0, -30), "cgan_non_iid_syncDG": (-16, 14),
+    "central_gan": (8, 5), "central_gan_3k": (8, 5), "iid": (-8, -7), "non_iid": (9, 6),
     "gan_non_iid_perseed_syncG": (-16, 13), "noisy_client": (8, 6),
 }
 
 
 def place_label(ax, x, y, text, tag):
     dx, dy = LABEL_OFFSETS.get(tag, (7, 5))
-    far = abs(dx) > 12 or abs(dy) > 12
+    far = (abs(dx) > 12 or abs(dy) > 12) and dx != 0   # dx == 0: centred below, no leader
     ax.annotate(text, (x, y), xytext=(dx, dy), textcoords="offset points",
-                fontsize=6.3, color=INK2, va="center", ha="right" if dx < 0 else "left",
+                fontsize=6.3, color=INK2, va="center",
+                ha="center" if dx == 0 else ("right" if dx < 0 else "left"),
                 arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.5, shrinkA=0, shrinkB=4)
                 if far else None)
 
 
-def fig2_fid_vs_utility(res):
+def fig2_fid_vs_utility(res, NULL=None):
     C = res["configs"]
     fig, axes = plt.subplots(1, 2, figsize=(COL2, 2.9))
     specs = [("a", "Conditional GAN", CGAN, "acc", "Downstream accuracy (%)"),
@@ -231,16 +282,15 @@ def fig2_fid_vs_utility(res):
             xs.append(f["mean"]); ys.append(a["mean"])
         if len(xs) >= 3:
             rhos[letter] = stats.spearmanr(xs, ys).correlation
-            ax.text(0.98, 0.04, f"Spearman ρ = {rhos[letter]:+.2f}\n(FID ranking utility perfectly: −1)",
+            ax.text(0.98, 0.03, f"Spearman ρ = {rhos[letter]:+.2f} (n = {len(xs)})",
                     transform=ax.transAxes, ha="right", va="bottom", fontsize=6.3, color=INK2)
-        if metric == "pseudo_acc":
-            ax.axhline(CHANCE, color=MUTED, lw=0.7, ls=":")
-            ax.text(0.01, CHANCE, " chance", transform=ax.get_yaxis_transform(),
-                    fontsize=6.2, color=MUTED, va="bottom")
         ax.set_xlabel("FID (lower = closer to real images)")
         ax.set_ylabel(ylab)
         panel_letter(ax, letter, title)
         ax.margins(x=0.18, y=0.15)
+        lo, hi = ax.get_ylim()
+        ax.set_ylim(min(lo, 0 if NULL else lo), hi)
+        null_marks(ax, NULL, "y")
     handles = [Line2D([], [], **marker_style(NEUTRAL, "c15"), label="Centralized, 15k steps"),
                Line2D([], [], **marker_style(NEUTRAL_LIGHT, "c3"), label="Centralized, 3k steps"),
                Line2D([], [], **marker_style(BLUE, ""), label="IID"),
@@ -248,8 +298,10 @@ def fig2_fid_vs_utility(res):
                Line2D([], [], **marker_style(ORANGE, "perseed"), label="Non-IID, per-seed split"),
                Line2D([], [], **marker_style(AQUA, ""), label="Noisy client"),
                Line2D([], [], **marker_style(INK2, "dg"), label="Unfilled = Sync D&G")]
-    fig.legend(handles=handles, loc="upper center", ncol=7, bbox_to_anchor=(0.5, -0.01),
-               handletextpad=0.3, columnspacing=1.0)
+    if NULL:
+        handles.append(Patch(facecolor=NULL_FILL, label="Meaningless-label baseline (95%)"))
+    fig.legend(handles=handles, loc="upper center", ncol=4, bbox_to_anchor=(0.5, -0.01),
+               handletextpad=0.3, columnspacing=1.2)
     fig.subplots_adjust(wspace=0.3)
     save(fig, "fig2_fid_vs_utility")
     return rhos
@@ -286,7 +338,7 @@ def _hbars(ax, cat, C, metric, value_fmt):
     return xmax
 
 
-def fig3_results_overview(res):
+def fig3_results_overview(res, NULL=None):
     C, R = res["configs"], res["references"]
     fig, axes = plt.subplots(2, 2, figsize=(COL2, 4.2),
                              gridspec_kw={"height_ratios": [len(CGAN), len(GAN)]})
@@ -301,7 +353,7 @@ def fig3_results_overview(res):
             if ref.get("mean") is not None:
                 ax.axvline(ref["mean"], color=INK, lw=0.8, ls=ls, zorder=1)
         ax.set_xlim(0, max(ax.get_xlim()[1], R["real_full"]["mean"] * 1.1))
-    axes[1, 1].axvline(CHANCE, color=MUTED, lw=0.8, ls=":", zorder=1)
+        null_marks(ax, NULL, "x", label=False)
 
     panel_letter(axes[0, 0], "a", "Conditional GAN — FID (lower = better)")
     panel_letter(axes[0, 1], "b", "Conditional GAN — downstream accuracy (%)")
@@ -319,7 +371,9 @@ def fig3_results_overview(res):
                Line2D([], [], color=INK2, lw=0.7, label="± 1 s.d."),
                Line2D([], [], color=INK, lw=0.8, label="Real data, full"),
                Line2D([], [], color=INK, lw=0.8, ls="--", label="Real data, 10k"),
-               Line2D([], [], color=MUTED, lw=0.8, ls=":", label="Chance")]
+               Line2D([], [], color=MUTED, lw=0.8, ls=":", label="Majority class")]
+    if NULL:
+        handles.append(Patch(facecolor=NULL_FILL, label="Meaningless-label baseline (95%)"))
     fig.legend(handles=handles, loc="upper center", ncol=6, bbox_to_anchor=(0.5, 0.0),
                handlelength=1.4, columnspacing=0.9)
     fig.subplots_adjust(wspace=0.08, hspace=0.42)
@@ -384,11 +438,6 @@ def fig5_mechanism():
             pres.append(np.mean(p)); absn.append(np.mean(a) if a else np.nan)
         return np.array(pres), np.array(absn)
 
-    def tag_end(ax, y, text, dy=3):
-        ax.annotate(text, (r[-1], y), xytext=(-2, dy), textcoords="offset points",
-                    ha="right", va="bottom" if dy >= 0 else "top", fontsize=6.2, color=INK2,
-                    zorder=5, bbox=dict(boxstyle="square,pad=0.15", fc=SURFACE, ec="none", alpha=0.85))
-
     def band(ax, r, arr, color, ls="-", lw=1.3):
         arr = np.array(arr, dtype=float)
         ax.fill_between(r, arr.min(0), arr.max(0), color=color, alpha=0.10, lw=0)
@@ -396,52 +445,39 @@ def fig5_mechanism():
         return arr.mean(0)
 
     r = np.arange(1, len(logs["iid"][0]["g_loss"]) + 1)
-    fig, axes = plt.subplots(1, 3, figsize=(COL2, 2.25))
+    # Panel (a) of the earlier version repeated Fig. 1(b); dropped. No in-panel text:
+    # colour = condition, line style is explained in the legend.
+    fig, axes = plt.subplots(1, 2, figsize=(COL2, 2.3))
 
     ax = axes[0]
-    e1 = band(ax, r, [lg["g_loss"] for lg in logs["iid"]], BLUE)
-    e2 = band(ax, r, [lg["g_loss"] for lg in logs["non_iid"]], ORANGE)
-    tag_end(ax, e1[-1], "IID")
-    tag_end(ax, e2[-1], "Non-IID", dy=-3)
-    ax.set_ylabel("Generator loss")
-    panel_letter(ax, "a", "Generator loss")
-
-    ax = axes[1]
-    iid_p = band(ax, r, [split_logits(lg)[0] for lg in logs["iid"]], BLUE)
+    band(ax, r, [split_logits(lg)[0] for lg in logs["iid"]], BLUE)
     p = band(ax, r, [split_logits(lg)[0] for lg in logs["non_iid"]], ORANGE)
     a = band(ax, r, [split_logits(lg)[1] for lg in logs["non_iid"]], ORANGE, ls="--")
-    tag_end(ax, iid_p[-1], "IID")
-    tag_end(ax, p[-1], "Non-IID, class held locally")
-    tag_end(ax, a[-1], "Non-IID, class absent locally", dy=-3)
-    ax.set_ylabel("Discriminator logit (generated)")
-    panel_letter(ax, "b", "Rejection of generated samples")
+    ax.set_ylabel("Mean discriminator logit\non generated images")
+    panel_letter(ax, "a", "Discriminator response to generated samples")
 
-    ax = axes[2]
+    ax = axes[1]
     m1 = band(ax, r, [lg["cosine_sim_pairwise_mean"] for lg in logs["iid"]], BLUE)
     n1 = band(ax, r, [lg["cosine_sim_pairwise_min"] for lg in logs["iid"]], BLUE, ls="--", lw=1.0)
     m2 = band(ax, r, [lg["cosine_sim_pairwise_mean"] for lg in logs["non_iid"]], ORANGE)
     n2 = band(ax, r, [lg["cosine_sim_pairwise_min"] for lg in logs["non_iid"]], ORANGE, ls="--", lw=1.0)
     ax.axhline(0, color=INK2, lw=0.6)
-    tag_end(ax, m1[-1], "IID, mean")
-    tag_end(ax, n1[-1], "IID, least-aligned pair")
-    tag_end(ax, m2[-1], "Non-IID, mean")
-    tag_end(ax, n2[-1], "Non-IID, least-aligned pair", dy=-3)
-    ax.set_ylabel("Cosine similarity")
-    panel_letter(ax, "c", "Client-update alignment")
+    ax.set_ylabel("Cosine similarity of\nclient generator updates")
+    panel_letter(ax, "b", "Client-update alignment")
 
     for ax in axes:
         ax.set_xlim(0.5, 30.5)
         ax.set_xticks([1, 10, 20, 30])
         ax.set_xlabel("Federated round")
         ax.grid(axis="x", visible=False)
-        lo, hi = ax.get_ylim()
-        ax.set_ylim(lo - 0.1 * (hi - lo), hi + 0.1 * (hi - lo))
     fig.legend(handles=[Line2D([], [], color=BLUE, lw=1.3, label="IID"),
                         Line2D([], [], color=ORANGE, lw=1.3, label="Non-IID (frozen split)"),
+                        Line2D([], [], color=INK2, lw=1.3,
+                               label="(a) class held by the client · (b) mean over client pairs"),
                         Line2D([], [], color=INK2, lw=1.0, ls="--",
-                               label="(b) class absent locally · (c) least-aligned client pair")],
-               loc="upper center", ncol=3, bbox_to_anchor=(0.5, -0.01))
-    fig.subplots_adjust(wspace=0.38)
+                               label="(a) class absent from the client · (b) least-aligned pair")],
+               loc="upper center", ncol=2, bbox_to_anchor=(0.5, -0.01), columnspacing=1.5)
+    fig.subplots_adjust(wspace=0.32)
     save(fig, "fig5_mechanism")
 
     gap = p - a
@@ -454,7 +490,7 @@ def fig5_mechanism():
 
 
 # ── Fig 6: labelling-protocol artifact ────────────────────────────────────────
-def fig6_labeling_artifact(res):
+def fig6_labeling_artifact(res, NULL=None):
     C = res["configs"]
     fig, ax = plt.subplots(figsize=(COL1, 2.3))
     y = np.arange(len(GAN))[::-1]
@@ -468,8 +504,9 @@ def fig6_labeling_artifact(res):
             ax.barh(yi - 0.19, pl["mean"], height=0.34, color=color, zorder=2)
             ax.errorbar(pl["mean"], yi - 0.19, xerr=pl.get("std") or 0, ecolor=INK2,
                         elinewidth=0.7, capsize=1.5, fmt="none", zorder=3)
-    ax.axvline(CHANCE, color=INK2, lw=0.7, ls=":")
-    ax.text(CHANCE + 0.6, len(GAN) - 0.45, "chance (11.1%)", fontsize=6, color=INK2)
+    null_marks(ax, NULL, "x", label=False)
+    maj = NULL["majority"] if NULL else MAJORITY
+    ax.text(maj + 0.5, len(GAN) - 0.45, f"majority class ({maj:.1f}%)", fontsize=6, color=INK2)
     ax.set_yticks(y)
     ax.set_yticklabels([g[1] for g in GAN])
     ax.tick_params(axis="y", length=0)
@@ -477,14 +514,40 @@ def fig6_labeling_artifact(res):
     ax.set_xlabel("Downstream test accuracy (%)")
     ax.legend(handles=[Patch(facecolor=SURFACE, edgecolor=MUTED, hatch="//////",
                              label="Round-robin labels"),
-                       Patch(facecolor=INK2, label="Pseudo-labels (colour = condition)")],
+                       Patch(facecolor=INK2, label="Pseudo-labels (colour = condition)")]
+              + ([Patch(facecolor=NULL_FILL, label="Meaningless-label baseline (95%)")] if NULL else []),
               loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=6.2)
     save(fig, "fig6_labeling_artifact")
 
 
 # ── Captions ──────────────────────────────────────────────────────────────────
-def write_captions(res, rhos, mech):
+def _loss_change_from_r5(tag):
+    """Per-seed change: mean(rounds 26-30) - round 5. Round 5 is used because
+    rounds 1-4 contain an initial transient (largest under Sync D&G)."""
+    out = []
+    for s_ in SEEDS:
+        p_ = os.path.join(LOG_DIR, f"losses_{tag}_seed{s_}.json")
+        if os.path.exists(p_):
+            g = np.array(load_json(p_)["g_loss"], float)
+            out.append(g[-5:].mean() - g[4])
+    return out
+
+
+def _rng(v):
+    return f"{min(v):+.2f} to {max(v):+.2f}" if v else "n/a"
+
+
+def _exact_spearman_p(x, y):
+    """Two-sided exact permutation p for Spearman rho (n <= 8)."""
+    import itertools
+    rho = stats.spearmanr(x, y).correlation
+    perms = [stats.spearmanr(x, q).correlation for q in itertools.permutations(y)]
+    return rho, float(np.mean(np.abs(perms) >= abs(rho) - 1e-12))
+
+
+def write_captions(res, rhos, mech, NULL=None):
     C, R = res["configs"], res["references"]
+    D = {d["label"]: d for d in res.get("derived", []) if "difference" in d}
 
     def m(tag, metric):
         s = C.get(tag, {}).get("summary", {}).get(metric, {})
@@ -492,46 +555,91 @@ def write_captions(res, rhos, mech):
             return "n/a"
         return f"{s['mean']:.1f} ± {s['std']:.1f}" if s.get("std") is not None else f"{s['mean']:.1f}"
 
+    def dv(label):
+        d = D.get(label)
+        return f"{d['difference']:+.1f}" if d else "n/a"
+
+    sp = {}
+    for key, cat, metric in (("a", CGAN, "acc"), ("b", GAN, "pseudo_acc")):
+        xs, ys = [], []
+        for tag, *_ in cat:
+            sm = C.get(tag, {}).get("summary", {})
+            if sm.get("fid", {}).get("n") and sm.get(metric, {}).get("n"):
+                xs.append(sm["fid"]["mean"]); ys.append(sm[metric]["mean"])
+        if len(xs) >= 3:
+            sp[key] = (*_exact_spearman_p(xs, ys), len(xs))
+
+    maj = NULL["majority"] if NULL else MAJORITY
+    band = (f"Shaded: 0 to the 95th percentile ({NULL['k_p95']:.1f}%) of the average of "
+            f"{NULL['K']} classifiers trained on content-free (permuted) labels through the "
+            f"same validation-selected pipeline (pooled over {NULL['n']} runs). "
+            if NULL else "")
     lines = [
-        "CAPTION DRAFTS — rewrite in your own words; numbers are from final_results_v2.json",
+        "CAPTION DRAFTS — rewrite in your own words; numbers are from final_results_v2.json"
+        + (" and null_baseline.json" if NULL else ""),
         "Error bars / bands: ± 1 sample s.d. (ddof=1) or min–max over 3 generator seeds, as stated.",
         "",
         "Fig. 1  Generator loss per federated round (mean over clients; line = mean of 3 seeds,",
-        "band = min–max). Under label skew the conditional GAN's loss rises and stalls in every",
-        "run — frozen split, three per-seed splits, and Sync D&G — while every IID control falls;",
-        "the unconditional GAN converges under the same skew. Loss values are not comparable",
-        "across panels (different discriminator regimes).",
+        "band = min–max). Change from round 5 to the mean of rounds 26–30, per seed — conditional",
+        f"GAN under label skew: Sync-G frozen split {_rng(_loss_change_from_r5('cgan_non_iid'))}, "
+        f"three per-seed splits {_rng(_loss_change_from_r5('cgan_non_iid_perseed_syncG'))};",
+        f"Sync D&G {_rng(_loss_change_from_r5('cgan_non_iid_syncDG'))} (smaller, after a sharp fall "
+        "in rounds 1–4). Every IID control falls",
+        f"(Sync-G {_rng(_loss_change_from_r5('cgan_iid'))}, Sync D&G "
+        f"{_rng(_loss_change_from_r5('cgan_iid_syncDG'))}); the unconditional GAN falls under every",
+        "condition. Loss values are not comparable across panels (different discriminator regimes).",
         "",
         "Fig. 2  FID against downstream accuracy for each configuration (mean ± 1 s.d., 3 seeds).",
-        f"Conditional: Spearman ρ = {rhos.get('a', float('nan')):+.2f}; unconditional (pseudo-labelled): "
-        f"ρ = {rhos.get('b', float('nan')):+.2f}. A metric that ranked utility would give ρ = −1.",
+        band + f"Dotted: majority-class rate of the test set ({maj:.1f}%).",
         "Unfilled markers: discriminator also synchronized (Sync D&G).",
+    ]
+    if sp:
+        lines.append("Spearman ρ, descriptive: " + "; ".join(
+            f"({k}) {v[0]:+.2f}, n = {v[2]}, exact permutation p = {v[1]:.2f}" for k, v in sp.items())
+            + ". Neither is distinguishable from zero at this n;")
+        lines.append("the evidence is in specific pairs, e.g. Sync D&G vs Sync-G (IID): FID "
+                     f"{dv('Aggregation effect (D&G - G), IID, cGAN FID')}, accuracy "
+                     f"{dv('Aggregation effect (D&G - G), IID, cGAN acc')} points.")
+    lines += [
         "",
         "Fig. 3  Per-configuration FID and downstream accuracy. Bars: mean of 3 generator seeds;",
-        "dots: individual seeds; whiskers: ± 1 s.d. Downstream accuracy: classifier trained on",
-        "10,000 synthetic images, best epoch selected on the PathMNIST validation split, averaged",
-        "over 3 classifier seeds, tested on the 7,180 real test images. Vertical lines: classifiers",
-        f"trained on real data, full ({R['real_full']['mean']:.1f}%) and 10,000-image "
-        f"({R['real_matched_10k']['mean']:.1f}%) subsets.",
+        "dots: individual seeds (each the mean of 3 classifiers); whiskers: ± 1 s.d. Downstream",
+        "accuracy: classifier trained on 10,000 synthetic images, best epoch selected on the",
+        "PathMNIST validation split, averaged over 3 classifier seeds, tested on the 7,180 real",
+        f"test images. Solid / dashed lines: real data, full ({R['real_full']['mean']:.1f}%) and "
+        f"10,000-image ({R['real_matched_10k']['mean']:.1f}%) training sets.",
+        f"Dotted: majority class ({maj:.1f}%). " + band,
         "",
         "Fig. 4  Per-class test accuracy of classifiers trained on conditional-GAN synthetic data",
         "(mean over 3 generator seeds × 3 classifier seeds). Top row: classifier trained on real data.",
         "",
         "Fig. 5  Mechanism diagnostic, conditional GAN, Sync-G, frozen split, 3 seeds (line = mean,",
-        "band = min–max). (b) Mean discriminator logit on generated images; under non-IID the gap",
+        "band = min–max). (a) Mean discriminator logit on generated images; under non-IID the gap",
         "between locally-held and locally-absent classes widens from "
         + (f"{mech['gap_r1_5']:+.2f} (rounds 1–5) to {mech['gap_r26_30']:+.2f} (rounds 26–30)." if mech else "n/a."),
-        "(c) Cosine similarity of client generator updates; dashed = least-aligned client pair",
-        "(seed-averaged). " + (f"Seed-averaged minimum: IID {mech['iid_min_of_seedavg_min']:+.3f}, "
-                               f"non-IID {mech['noniid_min_of_seedavg_min']:+.3f}; single-seed minima "
+        "(b) Cosine similarity of client generator updates; dashed = least-aligned client pair",
+        "(seed-averaged). " + (f"Mean over pairs, round 1 → 30: IID {mech['iid_mean_r1']:+.3f} → "
+                               f"{mech['iid_mean_r30']:+.3f}, non-IID {mech['noniid_mean_r1']:+.3f} → "
+                               f"{mech['noniid_mean_r30']:+.3f}. Seed-averaged minimum: IID "
+                               f"{mech['iid_min_of_seedavg_min']:+.3f}, non-IID "
+                               f"{mech['noniid_min_of_seedavg_min']:+.3f}; single-seed minima "
                                f"{mech['iid_min_any_seed']:+.3f} and {mech['noniid_min_any_seed']:+.3f}."
                                if mech else ""),
         "",
-        "Fig. 6  Unconditional generators: downstream accuracy under round-robin labels (random",
-        "with respect to image content by construction, hence near chance) versus pseudo-labels",
-        "from a classifier trained on real data. Centralized 15k: round-robin "
-        f"{m('central_gan', 'roundrobin_acc')}%, pseudo-labelled {m('central_gan', 'pseudo_acc')}%.",
+        "Fig. 6  Unconditional generators: downstream accuracy under round-robin labels versus",
+        "pseudo-labels from a classifier trained on real data. Round-robin labels carry no",
+        "information about image content, so these bars are draws from the meaningless-label",
+        "baseline (shaded)" + (f": single classifiers average {NULL['single_mean']:.1f} ± "
+                               f"{NULL['single_sd']:.1f}% (max {NULL['single_max']:.1f}%) with "
+                               f"validation selection, {NULL['final_mean']:.1f}% at the final epoch."
+                               if NULL else "."),
+        "Selection on labelled real validation data, not image content, lifts them above uniform",
+        f"chance (11.1%). Centralized 15k: pseudo-labelled {m('central_gan', 'pseudo_acc')}%. "
+        f"Centralized 3k: {m('central_gan_3k', 'pseudo_acc')}%, below the baseline mean",
+        "(its pseudo-labels collapse onto few classes).",
     ]
+    if NULL and NULL["standin"]:
+        lines.insert(0, "!! BUILT FROM A STAND-IN null_baseline.json — rerun locally !!")
     with open(os.path.join(OUT_DIR, "captions_draft.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print("  saved figures/paper/captions_draft.txt")
@@ -543,11 +651,14 @@ if __name__ == "__main__":
         raise SystemExit(f"{src} not found — run evaluate_downstream_v2.py first.")
     res = load_json(src)
     print("Building paper figures from", src)
+    NULL = load_null(K=res.get("protocol", {}).get("K", 3))
+    if NULL and NULL["standin"]:
+        print("  WARNING: null_baseline.json is a stand-in, not the real run")
     fig1_training_dynamics()
-    rhos = fig2_fid_vs_utility(res)
-    fig3_results_overview(res)
+    rhos = fig2_fid_vs_utility(res, NULL)
+    fig3_results_overview(res, NULL)
     fig4_perclass_heatmap(res)
     mech = fig5_mechanism()
-    fig6_labeling_artifact(res)
-    write_captions(res, rhos, mech)
+    fig6_labeling_artifact(res, NULL)
+    write_captions(res, rhos, mech, NULL)
     print("Done.")
