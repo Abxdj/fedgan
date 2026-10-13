@@ -16,7 +16,8 @@ shows each file's history.
 | Single-seed metrics: `per_class_fid.py`, `precision_recall.py`, `per_class_fid.json`, `precision_recall_all.json` | built from the no-seed June checkpoints; recall is degenerate (0.0000–0.0048) | per-class accuracy in `final_results_v2.json` (fig4) |
 | Single-seed diagnostic: `perclient_gloss_diagnostic.py`, `perclient_gloss_diagnostic_seed42.json`, `visualize_gloss_diagnostic.py`, `fig6_perclient_diagnostic.png` | seed 42 only, no IID control | `diagnostic_iid_control.py` (3 seeds + control) |
 | Pre-paper figure scripts: `visualize_multiseed.py`, `visualize_with_centralized.py`, `visualize_diagnostic_control.py`, `visualize_pseudo_label.py`, and their figures | read the retired JSONs above; `fig3_silent_failure_multiseed.png` plots the unstable 85.89 % reference | `make_paper_figures.py` → `figures/paper/` |
-| `centralized_train_v1_legacy.py` | reference copy only | `centralized_train.py`. **This is the script that produced the 15k centralized checkpoints** — same training math as the current one, but samples noise on CPU rather than GPU |
+| `centralized_train_v1_legacy.py` | replaced by `centralized_train.py` (adds `--steps`) | `centralized_train.py`. **This is the script that produced the 15k centralized checkpoints** — same training math as the current one, but samples noise on CPU rather than GPU. Still runnable; see below |
+| `run_blocking.py` | runner for the C1–C3 blocking experiments; its final step calls the retired `evaluate_blocking.py` | the explicit training loops in the top-level `README.md` (steps 2–3) |
 
 ## Running anything in here
 
@@ -28,3 +29,13 @@ From the root:
 
 Don't. They write their outputs into the live `logs/` and `figures/`
 directories, which would recreate the retired files next to the current ones.
+
+**One exception: `centralized_train_v1_legacy.py`.** It is the only way to
+reproduce the 15k centralized checkpoints, so run it exactly as step 3 of the
+top-level `README.md` shows:
+
+    $env:PYTHONPATH = "."; python legacy/scripts/centralized_train_v1_legacy.py --seed <S>
+
+It writes only `checkpoints/generator_central_{gan,cgan}_seed{S}_final.pt` and
+`logs/losses_central_{gan,cgan}_seed{S}.json`. Those are current files, not
+retired ones.

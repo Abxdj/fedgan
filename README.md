@@ -96,21 +96,23 @@ foreach ($s in 42,123,2024) { python diagnostic_iid_control.py --seed $s }
 python evaluate_final.py                 # FID -> logs/final_results.json
 python evaluate_downstream_v2.py         # downstream -> logs/final_results_v2.json
 python evaluate_null_baseline.py         # null baseline + statistics -> logs/null_baseline.json
-python check_determinism.py --log logs/determinism_check.txt
+python check_determinism.py --log logs/determinism_check_rerun.txt   # never overwrite the committed log
 python make_paper_figures.py             # -> figures/paper/
 python sample_grid.py
 ```
 
-Approximate times on an RTX 3060 Laptop GPU: `evaluate_final.py` about 30 min,
-`evaluate_downstream_v2.py` 30–60 min, `evaluate_null_baseline.py` about 30 min.
+Measured times on an RTX 3060 Laptop GPU: `evaluate_final.py` 31.5 min,
+`evaluate_null_baseline.py` 29.6 min; `evaluate_downstream_v2.py` 30–60 min
+(estimate). Some script docstrings give older, longer estimates.
 
 ## Notes on reproducibility
 
 - **Not bit-reproducible on GPU.** Every script is seeded and cuDNN runs in
-  deterministic mode, but some CUDA kernels are not deterministic. Identical
-  classifier runs on real-signal data differ by about 1 percentage point
-  (`logs/determinism_check.txt`); K = 3 classifier repeats absorb this.
-  Expect small differences from the logged numbers.
+  deterministic mode, but some CUDA kernels are not deterministic. On the one
+  checkpoint tested (cGAN IID, seed 42), identical classifier runs differed by
+  about 1 percentage point (`logs/determinism_check.txt`); classifiers trained
+  on content-free labels moved by several points. K = 3 classifier repeats
+  absorb this. Expect small differences from the logged numbers.
 - **FID reference cache.** `evaluate_final.py` computes Inception statistics
   for all 7,180 test images once and caches them in `logs/` as an `.npz`
   (about 34 MB, gitignored). A fresh clone recomputes it on the first run.
