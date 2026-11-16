@@ -33,7 +33,7 @@ from cgan import ConditionalGenerator, LATENT_DIM as COND_LATENT_DIM, NUM_CLASSE
 
 DATA_DIR = "./data"
 CKPT_DIR = "./checkpoints"
-FIG_DIR  = "./figures"
+FIG_DIR  = "./figures/paper"
 SEED     = 42          # one representative seed for the qualitative figure
 N_COLS   = 9           # one column per class for conditional rows
 DEVICE   = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,19 +42,20 @@ os.makedirs(FIG_DIR, exist_ok=True)
 
 ROWS = [
     ("Real (one per class)",  None,                                        None),
-    ("GAN — IID",             f"generator_iid_seed{SEED}_final.pt",          False),
-    ("GAN — Non-IID",         f"generator_non_iid_seed{SEED}_final.pt",      False),
-    ("GAN — Noisy Client",    f"generator_noisy_client_seed{SEED}_final.pt", False),
-    ("cGAN — IID",            f"generator_cgan_iid_seed{SEED}_final.pt",     True),
-    ("cGAN — Non-IID",        f"generator_cgan_non_iid_seed{SEED}_final.pt", True),
-    ("cGAN — Noisy Client",   f"generator_cgan_noisy_client_seed{SEED}_final.pt", True),
+    ("GAN, IID",              f"generator_iid_seed{SEED}_final.pt",          False),
+    ("GAN, non-IID (fixed)",  f"generator_non_iid_seed{SEED}_final.pt",      False),
+    ("GAN, noisy client",     f"generator_noisy_client_seed{SEED}_final.pt", False),
+    ("cGAN, IID",             f"generator_cgan_iid_seed{SEED}_final.pt",     True),
+    ("cGAN, non-IID (fixed)", f"generator_cgan_non_iid_seed{SEED}_final.pt", True),
+    ("cGAN, noisy client",    f"generator_cgan_noisy_client_seed{SEED}_final.pt", True),
 ]
 
-CLASS_NAMES = ["adipose", "backgr.", "debris", "lymph.", "mucus",
-               "sm.muscle", "colon", "stroma", "adenoca."]
+CLASS_NAMES = ["adipose", "background", "debris", "lymphocytes", "mucus",
+               "smooth muscle", "normal mucosa", "stroma", "tumor epith."]
 
-COLORS = {"bg": "#0F1117", "text": "#E8EAF0", "subtext": "#8B90A0",
-          "warn": "#E84C4C"}
+# Paper style: white background, no in-figure title (the caption carries it),
+# no highlighted rows. Sampling code and seed are unchanged from the earlier version.
+COLORS = {"bg": "#FFFFFF", "text": "#0B0B0B", "subtext": "#52514E"}
 
 torch.manual_seed(SEED)
 np.random.seed(SEED)
@@ -136,26 +137,18 @@ if __name__ == "__main__":
             # Column headers on top row only — class names apply to the
             # real row and to conditional rows (conditioned per column)
             if r == 0:
-                ax.set_title(CLASS_NAMES[c], fontsize=7,
+                ax.set_title(CLASS_NAMES[c], fontsize=6,
                              color=COLORS["subtext"], pad=3)
 
             # Row label on first column
             if c == 0:
-                label_color = (COLORS["warn"] if "Non-IID" in row_name
-                               and "cGAN" in row_name else COLORS["text"])
-                ax.set_ylabel(row_name, fontsize=7.5, color=label_color,
+                ax.set_ylabel(row_name, fontsize=7.5, color=COLORS["text"],
                               rotation=0, ha="right", va="center",
                               labelpad=48)
 
-    fig.suptitle(
-        "Figure 5 — Qualitative Samples: real vs. generated (seed 42)\n"
-        "Conditional rows: each column conditioned on that class. "
-        "Unconditional rows: independent random draws.",
-        fontsize=9.5, color=COLORS["text"], y=1.005)
-
     plt.tight_layout()
-    path = os.path.join(FIG_DIR, "fig5_sample_grid.png")
-    plt.savefig(path, dpi=200, bbox_inches="tight",
-                facecolor=COLORS["bg"])
+    for ext in ("pdf", "png"):
+        path = os.path.join(FIG_DIR, f"fig7_sample_grid.{ext}")
+        plt.savefig(path, dpi=300, bbox_inches="tight", facecolor=COLORS["bg"])
+        print(f"Saved -> {path}")
     plt.close()
-    print(f"\nSaved → {path}")
