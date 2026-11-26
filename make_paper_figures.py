@@ -233,7 +233,7 @@ def fig1_training_dynamics():
         ax.grid(axis="x", visible=False)
     axes[0].set_ylabel("Generator loss (mean of clients)")
     handles = [Line2D([], [], color=BLUE, lw=1.3, label="IID"),
-               Line2D([], [], color=ORANGE, lw=1.3, label="Non-IID (frozen split)"),
+               Line2D([], [], color=ORANGE, lw=1.3, label="Non-IID (fixed partition)"),
                Line2D([], [], color=ORANGE, lw=1.3, ls="--", label="Non-IID (3 per-seed splits)"),
                Line2D([], [], color=AQUA, lw=1.3, label="Noisy client")]
     fig.legend(handles=handles, loc="upper center", ncol=4, bbox_to_anchor=(0.5, -0.01))
@@ -266,7 +266,7 @@ def fig2_fid_vs_utility(res, NULL=None):
     fig, axes = plt.subplots(1, 2, figsize=(COL2, 2.9))
     specs = [("a", "Conditional GAN", CGAN, "acc", "Downstream accuracy (%)"),
              ("b", "Unconditional GAN", GAN, "pseudo_acc",
-              "Downstream accuracy, pseudo-labelled (%)")]
+              "Downstream accuracy, pseudo-labeled (%)")]
     rhos = {}
     for ax, (letter, title, cat, metric, ylab) in zip(axes, specs):
         xs, ys = [], []
@@ -358,7 +358,7 @@ def fig3_results_overview(res, NULL=None):
     panel_letter(axes[0, 0], "a", "Conditional GAN — FID (lower = better)")
     panel_letter(axes[0, 1], "b", "Conditional GAN — downstream accuracy (%)")
     panel_letter(axes[1, 0], "c", "Unconditional GAN — FID")
-    panel_letter(axes[1, 1], "d", "Unconditional GAN — pseudo-labelled accuracy (%)")
+    panel_letter(axes[1, 1], "d", "Unconditional GAN — pseudo-labeled accuracy (%)")
     for ax in axes[:, 1]:
         ax.set_yticklabels([])
     handles = [Patch(facecolor=NEUTRAL, label="Centralized, 15k"),
@@ -471,7 +471,7 @@ def fig5_mechanism():
         ax.set_xlabel("Federated round")
         ax.grid(axis="x", visible=False)
     fig.legend(handles=[Line2D([], [], color=BLUE, lw=1.3, label="IID"),
-                        Line2D([], [], color=ORANGE, lw=1.3, label="Non-IID (frozen split)"),
+                        Line2D([], [], color=ORANGE, lw=1.3, label="Non-IID (fixed partition)"),
                         Line2D([], [], color=INK2, lw=1.3,
                                label="(a) class held by the client · (b) mean over client pairs"),
                         Line2D([], [], color=INK2, lw=1.0, ls="--",
@@ -514,7 +514,7 @@ def fig6_labeling_artifact(res, NULL=None):
     ax.set_xlabel("Downstream test accuracy (%)")
     ax.legend(handles=[Patch(facecolor=SURFACE, edgecolor=MUTED, hatch="//////",
                              label="Round-robin labels"),
-                       Patch(facecolor=INK2, label="Pseudo-labels (colour = condition)")]
+                       Patch(facecolor=INK2, label="Pseudo-labels (color = condition)")]
               + ([Patch(facecolor=NULL_FILL, label="Meaningless-label baseline (95%)")] if NULL else []),
               loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=6.2)
     save(fig, "fig6_labeling_artifact")
@@ -581,7 +581,7 @@ def write_captions(res, rhos, mech, NULL=None):
         "",
         "Fig. 1  Generator loss per federated round (mean over clients; line = mean of 3 seeds,",
         "band = min–max). Change from round 5 to the mean of rounds 26–30, per seed — conditional",
-        f"GAN under label skew: Sync-G frozen split {_rng(_loss_change_from_r5('cgan_non_iid'))}, "
+        f"GAN under label skew: Sync-G fixed partition {_rng(_loss_change_from_r5('cgan_non_iid'))}, "
         f"three per-seed splits {_rng(_loss_change_from_r5('cgan_non_iid_perseed_syncG'))};",
         f"Sync D&G {_rng(_loss_change_from_r5('cgan_non_iid_syncDG'))} (smaller, after a sharp fall "
         "in rounds 1–4). Every IID control falls",
@@ -613,7 +613,7 @@ def write_captions(res, rhos, mech, NULL=None):
         "Fig. 4  Per-class test accuracy of classifiers trained on conditional-GAN synthetic data",
         "(mean over 3 generator seeds × 3 classifier seeds). Top row: classifier trained on real data.",
         "",
-        "Fig. 5  Mechanism diagnostic, conditional GAN, Sync-G, frozen split, 3 seeds (line = mean,",
+        "Fig. 5  Mechanism diagnostic, conditional GAN, Sync-G, fixed partition, 3 seeds (line = mean,",
         "band = min–max). (a) Mean discriminator logit on generated images; under non-IID the gap",
         "between locally-held and locally-absent classes widens from "
         + (f"{mech['gap_r1_5']:+.2f} (rounds 1–5) to {mech['gap_r26_30']:+.2f} (rounds 26–30)." if mech else "n/a."),
@@ -633,8 +633,8 @@ def write_captions(res, rhos, mech, NULL=None):
                                f"{NULL['single_sd']:.1f}% (max {NULL['single_max']:.1f}%) with "
                                f"validation selection, {NULL['final_mean']:.1f}% at the final epoch."
                                if NULL else "."),
-        "Selection on labelled real validation data, not image content, lifts them above uniform",
-        f"chance (11.1%). Centralized 15k: pseudo-labelled {m('central_gan', 'pseudo_acc')}%. "
+        "Selection on labeled real validation data, not image content, lifts them above uniform",
+        f"chance (11.1%). Centralized 15k: pseudo-labeled {m('central_gan', 'pseudo_acc')}%. "
         f"Centralized 3k: {m('central_gan_3k', 'pseudo_acc')}%, below the baseline mean",
         "(its pseudo-labels collapse onto few classes).",
     ]

@@ -3,7 +3,7 @@ Error bars / bands: ± 1 sample s.d. (ddof=1) or min–max over 3 generator seed
 
 Fig. 1  Generator loss per federated round (mean over clients; line = mean of 3 seeds,
 band = min–max). Change from round 5 to the mean of rounds 26–30, per seed — conditional
-GAN under label skew: Sync-G frozen split +0.45 to +0.57, three per-seed splits +0.69 to +1.07;
+GAN under label skew: Sync-G fixed partition +0.45 to +0.57, three per-seed splits +0.69 to +1.07;
 Sync D&G +0.18 to +0.30 (smaller, after a sharp fall in rounds 1–4). Every IID control falls
 (Sync-G -1.83 to -1.52, Sync D&G -0.84 to -0.60); the unconditional GAN falls under every
 condition. Loss values are not comparable across panels (different discriminator regimes).
@@ -24,7 +24,7 @@ Dotted: majority class (18.6%). Shaded: 0 to the 95th percentile (22.5%) of the 
 Fig. 4  Per-class test accuracy of classifiers trained on conditional-GAN synthetic data
 (mean over 3 generator seeds × 3 classifier seeds). Top row: classifier trained on real data.
 
-Fig. 5  Mechanism diagnostic, conditional GAN, Sync-G, frozen split, 3 seeds (line = mean,
+Fig. 5  Mechanism diagnostic, conditional GAN, Sync-G, fixed partition, 3 seeds (line = mean,
 band = min–max). (a) Mean discriminator logit on generated images; under non-IID the gap
 between locally-held and locally-absent classes widens from +2.17 (rounds 1–5) to +3.50 (rounds 26–30).
 (b) Cosine similarity of client generator updates; dashed = least-aligned client pair
@@ -34,6 +34,6 @@ Fig. 6  Unconditional generators: downstream accuracy under round-robin labels v
 pseudo-labels from a classifier trained on real data. Round-robin labels carry no
 information about image content, so these bars are draws from the meaningless-label
 baseline (shaded): single classifiers average 15.3 ± 7.1% (max 40.1%) with validation selection, 11.0% at the final epoch.
-Selection on labelled real validation data, not image content, lifts them above uniform
-chance (11.1%). Centralized 15k: pseudo-labelled 37.6 ± 1.8%. Centralized 3k: 7.8 ± 2.2%, below the baseline mean
+Selection on labeled real validation data, not image content, lifts them above uniform
+chance (11.1%). Centralized 15k: pseudo-labeled 37.6 ± 1.8%. Centralized 3k: 7.8 ± 2.2%, below the baseline mean
 (its pseudo-labels collapse onto few classes).
