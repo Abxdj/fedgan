@@ -99,6 +99,7 @@ python evaluate_null_baseline.py         # null baseline + statistics -> logs/nu
 python check_determinism.py --log logs/determinism_check_rerun.txt   # never overwrite the committed log
 python make_paper_figures.py             # -> figures/paper/
 python sample_grid.py
+python tools/make_tables.py --logs logs --out tables   # regenerates all paper tables
 ```
 
 Measured times on an RTX 3060 Laptop GPU: `evaluate_final.py` 31.5 min,
